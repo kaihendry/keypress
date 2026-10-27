@@ -1,8 +1,8 @@
 # Keypress
 
-<img src="Resources/AppIcon.png" alt="Keypress: a stopwatch on a white keycap" width="96" align="right">
+<img src="Resources/AppIcon.png" alt="Keypress: a hand pressing a key, with pressure marks" width="96" align="right">
 
-A small, local macOS menu bar stopwatch for measuring the input actions involved in an activity. Swift/AppKit, no dependencies; macOS 13 or newer, built with Swift 6 or newer.
+A small, local macOS menu bar activity counter showing actions per minute (APM), with a stopwatch for measuring a task. Swift/AppKit, no dependencies; macOS 13 or newer, built with Swift 6 or newer.
 
 For a related tool on Linux/Wayland, see [wl-actions](https://github.com/kaihendry/wl-actions): a CLI that wraps a Wayland application and counts keyboard, mouse, scroll, and touch activity. The two tools use different counting rules, so their totals are not directly interchangeable.
 
@@ -35,7 +35,15 @@ open /Applications/Keypress.app
 
 `make install` builds the release app, copies it to `/Applications`, and verifies its signature. Quit Keypress before reinstalling, then reopen the installed copy. To install just for your user, run `make install INSTALL_DIR="$HOME/Applications"`. For a build without installation, run `make build`; the app is created at `build/Keypress.app`.
 
-Click the stopwatch in the menu bar to start or stop. Stopping opens the results; right-click opens them at any time. Start again to resume; Reset clears the session. The copy button copies aggregate results. Nothing is saved on disk; quitting clears the session.
+Click the APM indicator in the menu bar to start or stop. Stopping opens the results; right-click opens them at any time. Elapsed time remains in the panel. Start again to resume; Reset clears the session. The copy button copies aggregate results. Nothing is saved on disk; quitting clears the session.
+
+## Actions per minute
+
+The menu bar shows recent activity, for example **120 APM**. It counts accepted keyboard actions, clicks, scroll strokes/wheel bursts, and observed gestures in the last **60 one-second buckets**. It falls back to zero after a minute without actions. During the first minute after starting or resuming, the window fills naturally without extrapolating a short burst to a full minute.
+
+When stopped, the menu shows **— APM** and the panel preserves the final recent rate. Resuming clears the recent window; session totals and elapsed time continue. The panel also shows **session average APM**: total actions divided by recorded minutes, excluding paused time. This average becomes available after one recorded second.
+
+The idea is familiar from [StarCraft's APM](https://starcraft.fandom.com/wiki/Actions_per_minute); Keypress uses the counting rules below for everyday computer activity. APM measures interaction rate, not a physical-strain score. Only 60 aggregate time buckets are retained for the rolling rate, with no individual event history.
 
 On first use, enable **Accessibility** and **Input Monitoring** using the buttons in the panel. Both are required: Accessibility supplies target geometry for Fitts estimates; Input Monitoring supplies input events. In the permission dialog's app picker, select `/Applications/Keypress.app` (or your custom install location). macOS may require quitting and reopening the app after permission changes. Keep the app in the same location; moving or rebuilding an ad-hoc-signed app can require granting permissions again.
 
@@ -43,7 +51,7 @@ For a Homebrew installation, select the linked `~/Applications/Keypress.app`, or
 
 ## Restarting and checking the version
 
-**Updates do not restart the app automatically.** Right-click the stopwatch, copy any results you want to keep, and choose **Quit**. Then run `keypress` for Homebrew, or `open /Applications/Keypress.app` for a source install. Restarting clears the session totals. The app also does not automatically start at login.
+**Updates do not restart the app automatically.** Right-click the APM indicator, copy any results you want to keep, and choose **Quit**. Then run `keypress` for Homebrew, or `open /Applications/Keypress.app` for a source install. Restarting clears the session totals. The app also does not automatically start at login.
 
 For source installs, `make restart` quits the running app and opens the installed copy. It does not rebuild it; use `make install` first after changing the source.
 
@@ -79,7 +87,7 @@ The app samples target geometry on a background queue every 150 ms while running
 
 The panel shows **Average pointing difficulty**, with **Lower = easier targets**, and **measured clicks / all clicks**. Hover over the information icon for the technical unit (bits) and example scores. Missing measurements never enter the mean as zero. Results are an approximate pointing-difficulty comparison, not a calibrated movement-time prediction, ISO throughput, or medical strain score. Compare coverage as well as averages across activities; there is no combined weighted “strain” score.
 
-Only aggregate counts and difficulty totals are retained for the session. A current pointer origin and short-lived target geometry are held in memory for measurement. The code does not read key identities, typed text, Accessibility labels, or control values; it stores no event history and makes no network requests.
+Only aggregate counts, recent per-second counts for APM, and difficulty totals are retained for the session. A current pointer origin and short-lived target geometry are held in memory for measurement. The code does not read key identities, typed text, Accessibility labels, or control values; it stores no individual event history and makes no network requests.
 
 References: [MacKenzie on Fitts's law](https://www.yorku.ca/mack/hci1992.html), [two-dimensional targets](https://www.yorku.ca/mack/CHI92.html), [Apple event monitoring](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/MonitoringEvents/MonitoringEvents.html), [Apple trackpad events](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingTouchEvents/HandlingTouchEvents.html).
 
@@ -94,7 +102,7 @@ The Swift wrapper uses the selected toolchain and locates the Swift Testing macr
 
 The original app icon is drawn with AppKit vector shapes in `scripts/generate-icon.swift`. Run `make icon` to regenerate the PNG preview and the complete macOS `.icns` asset. Builds use the checked-in icon, so no image-generation service or extra tool is required.
 
-The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gesture sequences, pause/resume, Fitts geometry and missing-target handling. Real cross-app input requires the permissions above and a manual check:
+The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gesture sequences, pause/resume, rolling APM boundaries and inactivity, Fitts geometry and missing-target handling. Real cross-app input requires the permissions above and a manual check:
 
 1. Start, switch to another app, type three letters and press ⌘C: expect four keyboard actions (plus any other shortcuts used to switch apps).
 2. Hold a letter: expect one extra action. Click twice: expect two clicks.
@@ -102,5 +110,6 @@ The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gest
 4. Move onto an accessible button, wait briefly, then click. Confirm measured-target coverage increases. Repeat with a smaller/farther target to compare difficulty.
 5. Stop: counts and time freeze. Resume retains the totals. Reset returns everything to zero.
 6. Try pinch/swipe/rotation in your apps and check which gestures the OS actually exposes. Treat unavailable gestures as missing coverage.
+7. While counting, confirm accepted actions update the menu's APM. Leave it idle for a minute: recent APM should drop to zero. Stop freezes the panel's recent APM; Resume starts a fresh recent window while retaining session totals.
 
 The app is ad-hoc signed for local use, not notarized for distribution.

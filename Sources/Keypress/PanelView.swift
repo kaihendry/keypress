@@ -7,7 +7,7 @@ struct PanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("Keypress", systemImage: "stopwatch")
+                Label("Keypress", systemImage: "hand.tap")
                     .font(.headline)
                 Spacer()
                 Text(model.running ? "Counting" : "Stopped")
@@ -32,6 +32,10 @@ struct PanelView: View {
             }
             Divider()
             VStack(spacing: 8) {
+                row(model.running ? "APM · last minute" : "APM · at stop", "\(model.recentAPM)")
+                    .help("Actions in the last 60 one-second buckets. The first minute fills naturally; resuming starts a fresh window.")
+                row("APM · session average", model.averageAPMText)
+                    .help("Total actions divided by recorded minutes. Paused time is excluded. Available after one recorded second.")
                 row("Keyboard actions", "\(model.counts.keys)")
                 row("Clicks / taps", "\(model.counts.clicks)")
                 row("Scroll strokes / wheel bursts", "\(model.counts.scrolls)")
@@ -78,7 +82,7 @@ struct PanelView: View {
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Session totals only · cleared on quit")
+                    Text("Counts only · cleared on quit")
                     Text(BuildInfo.current.label)
                         .textSelection(.enabled)
                         .help("Version of this running app. Updates take effect after you quit and reopen Keypress.")

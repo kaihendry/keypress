@@ -7,6 +7,7 @@ final class SessionModel: ObservableObject {
     @Published private(set) var counts = ActionCounter()
     @Published private(set) var running = false
     @Published private(set) var elapsed = 0.0
+    @Published private(set) var recentAPM = 0
     @Published private(set) var accessibilityAllowed = AXIsProcessTrusted()
     @Published private(set) var inputAllowed = CGPreflightListenEventAccess()
     @Published private(set) var notice: String?
@@ -16,6 +17,7 @@ final class SessionModel: ObservableObject {
     private let monitor = InputMonitor()
     private let probe = TargetProbe()
     private var stopwatch = Stopwatch()
+    private var actionRate = ActionRate()
     private var movement = PointerMovement()
     private var timer: Timer?
     private var lastPermissionCheck = 0.0
@@ -23,6 +25,9 @@ final class SessionModel: ObservableObject {
     private var now: Double { ProcessInfo.processInfo.systemUptime }
 
     var ready: Bool { accessibilityAllowed && inputAllowed }
+    var averageAPMText: String {
+        elapsed >= 1 ? String(format: "%.1f", Double(counts.total) * 60 / elapsed) : "—"
+    }
     var clockText: String {
         let seconds = Int(elapsed)
         return seconds >= 3600
@@ -88,6 +93,8 @@ final class SessionModel: ObservableObject {
         probe.clear()
         movement = PointerMovement(at: CGEvent(source: nil)?.location)
         counts.breakSequences()
+        actionRate = ActionRate()
+        recentAPM = 0
         stopwatch.start(at: now)
         running = true
         notice = nil
@@ -95,8 +102,10 @@ final class SessionModel: ObservableObject {
     }
 
     func pause() {
-        stopwatch.stop(at: now)
-        elapsed = stopwatch.elapsed(at: now)
+        let time = now
+        if running { recentAPM = actionRate.perMinute(at: time) }
+        stopwatch.stop(at: time)
+        elapsed = stopwatch.elapsed(at: time)
         running = false
         monitor.stop()
         probe.clear()
@@ -107,6 +116,8 @@ final class SessionModel: ObservableObject {
         pause()
         stopwatch = Stopwatch()
         counts = ActionCounter()
+        actionRate = ActionRate()
+        recentAPM = 0
         elapsed = 0
         notice = nil
         onChange?()
@@ -129,6 +140,7 @@ final class SessionModel: ObservableObject {
             return
         }
         elapsed = stopwatch.elapsed(at: time)
+        recentAPM = actionRate.perMinute(at: time)
         if let point = CGEvent(source: nil)?.location, excludePoint?(point) != true {
             probe.refresh(at: point, time: time)
         }
@@ -139,6 +151,7 @@ final class SessionModel: ObservableObject {
         guard running else { return }
         let point = event.location
         let time = now
+        let previousTotal = counts.total
         switch type {
         case .keyDown:
             guard !NSApp.isActive else { return }
@@ -164,6 +177,7 @@ final class SessionModel: ObservableObject {
             probe.clear()
         default: break
         }
+        recordActions(counts.total - previousTotal, at: time)
     }
 
     private func receiveGesture(_ event: NSEvent) {
@@ -176,8 +190,18 @@ final class SessionModel: ObservableObject {
         case .smartMagnify: kind = .smartZoom
         default: return
         }
-        counts.gesture(kind, at: now, phase: InputMonitor.phase(event.phase))
+        let time = now
+        let previousTotal = counts.total
+        counts.gesture(kind, at: time, phase: InputMonitor.phase(event.phase))
+        recordActions(counts.total - previousTotal, at: time)
         probe.clear()
+    }
+
+    private func recordActions(_ actions: Int, at time: Double) {
+        guard actions > 0 else { return }
+        actionRate.record(actions: actions, at: time)
+        recentAPM = actionRate.perMinute(at: time)
+        onChange?()
     }
 
     func copySummary() {
@@ -185,6 +209,8 @@ final class SessionModel: ObservableObject {
         let text = """
         Keypress — \(clockText)
         Actions: \(counts.total)
+        Recent APM (last minute\(running ? "" : " at stop")): \(recentAPM)
+        Session average APM (excluding pauses): \(averageAPMText)
         Keyboard actions: \(counts.keys)
         Clicks / taps: \(counts.clicks)
         Scroll strokes / wheel bursts: \(counts.scrolls)

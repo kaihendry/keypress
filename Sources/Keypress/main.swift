@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(clicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-            button.setAccessibilityLabel("Keypress stopwatch")
+            button.setAccessibilityLabel("Keypress actions per minute")
         }
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: PanelView(model: model) { [weak self] in
@@ -47,12 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateTitle() {
-        let title = " \(model.clockText)"
+        let title = model.running ? " \(model.recentAPM) APM" : " — APM"
         if item.button?.title != title { item.button?.title = title }
-        item.button?.image = NSImage(systemSymbolName: model.running ? "stop.circle.fill" : "stopwatch",
+        item.button?.image = NSImage(systemSymbolName: model.running ? "stop.circle.fill" : "hand.tap",
                                     accessibilityDescription: model.running ? "Stop counting" : "Start counting")
         item.button?.image?.isTemplate = true
-        item.button?.toolTip = "Click to \(model.running ? "stop" : "start"); right-click for results."
+        item.button?.toolTip = model.running
+            ? "\(model.recentAPM) actions in the last minute. Click to stop; right-click for results."
+            : "Counting stopped. Click to start; right-click for results."
     }
 
     private func isOwnControl(_ quartzPoint: CGPoint) -> Bool {
