@@ -1,6 +1,10 @@
 # Keypress
 
+<img src="Resources/AppIcon.png" alt="Keypress: a stopwatch on a white keycap" width="96" align="right">
+
 A small, local macOS menu bar stopwatch for measuring the input actions involved in an activity. Swift/AppKit, no dependencies; macOS 13 or newer, built with Swift 6 or newer.
+
+For a related tool on Linux/Wayland, see [wl-actions](https://github.com/kaihendry/wl-actions): a CLI that wraps a Wayland application and counts keyboard, mouse, scroll, and touch activity. The two tools use different counting rules, so their totals are not directly interchangeable.
 
 ## Install with Homebrew
 
@@ -87,6 +91,8 @@ make build
 ```
 
 The Swift wrapper uses the selected toolchain and locates the Swift Testing macros in standalone Command Line Tools. If Command Line Tools has mismatched public/private PackageDescription interfaces left over from an upgrade, it uses a project-local copy of the current public interface. It never modifies the installed toolchain. On a consistent installation, plain `swift test` also works.
+
+The original app icon is drawn with AppKit vector shapes in `scripts/generate-icon.swift`. Run `make icon` to regenerate the PNG preview and the complete macOS `.icns` asset. Builds use the checked-in icon, so no image-generation service or extra tool is required.
 
 The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gesture sequences, pause/resume, Fitts geometry and missing-target handling. Real cross-app input requires the permissions above and a manual check:
 

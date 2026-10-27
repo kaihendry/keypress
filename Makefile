@@ -2,10 +2,14 @@
 
 INSTALL_DIR ?= /Applications
 
-.PHONY: build install restart test
+.PHONY: build install restart test icon
 
 build:
 	./scripts/build.sh
+
+icon:
+	xcrun swift scripts/generate-icon.swift
+	iconutil -c icns build/Keypress.iconset -o Resources/Keypress.icns
 
 install: build
 	mkdir -p "$(INSTALL_DIR)"
