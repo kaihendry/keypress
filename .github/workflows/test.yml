@@ -1,0 +1,23 @@
+name: test
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: make test
+      - run: make build
+      - name: Check bundle and Git revision
+        run: |
+          codesign --verify --deep --strict build/Keypress.app
+          build/Keypress.app/Contents/MacOS/Keypress --version
+          test "$(/usr/libexec/PlistBuddy -c 'Print :KeypressGitRevision' build/Keypress.app/Contents/Info.plist)" = "$(git rev-parse --short=12 HEAD)"
