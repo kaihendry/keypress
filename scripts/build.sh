@@ -21,10 +21,10 @@ if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$revision" =~ ^([0-9a-f]{7,
 fi
 # Use a compact hash in the panel, retaining the dirty suffix for local changes.
 if [[ "$revision" =~ ^[0-9a-f]{40}$ ]]; then revision="${revision:0:12}"; fi
-./scripts/swift.sh build -c release
+./scripts/swift.sh build -c release "$@"
 app="$(pwd)/build/Keypress.app"
 mkdir -p "$app/Contents/MacOS"
-cp "$(./scripts/swift.sh build -c release --show-bin-path)/Keypress" "$app/Contents/MacOS/Keypress"
+cp "$(./scripts/swift.sh build -c release --show-bin-path "$@")/Keypress" "$app/Contents/MacOS/Keypress"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
