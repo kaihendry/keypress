@@ -43,7 +43,9 @@ The menu bar shows recent activity, for example **120 APM**. It counts accepted 
 
 When stopped, the menu shows **— APM** and the panel preserves the final recent rate. Resuming clears the recent window; session totals and elapsed time continue. The panel also shows **session average APM**: total actions divided by recorded minutes, excluding paused time. This average becomes available after one recorded second.
 
-The idea is familiar from [StarCraft's APM](https://starcraft.fandom.com/wiki/Actions_per_minute); Keypress uses the counting rules below for everyday computer activity. APM measures interaction rate, not a physical-strain score. Only 60 aggregate time buckets are retained for the rolling rate, with no individual event history.
+The **APM over time** chart shows the same rolling rate over the latest **10 minutes of recorded time**, with elapsed time on the horizontal axis and APM on the vertical axis. It updates during activity and inactivity, preserves the readings when stopped, and starts a separate line when resumed. Paused time is excluded. Reset clears the chart along with the session totals.
+
+The idea is familiar from [StarCraft's APM](https://starcraft.fandom.com/wiki/Actions_per_minute); Keypress uses the counting rules below for everyday computer activity. APM measures interaction rate, not a physical-strain score. The rolling rate uses 60 aggregate time buckets; the chart keeps at most 601 aggregate APM readings, updating the latest reading within each recorded second. Neither stores individual input events.
 
 On first use, enable **Accessibility** and **Input Monitoring** using the buttons in the panel. Both are required: Accessibility supplies target geometry for Fitts estimates; Input Monitoring supplies input events. In the permission dialog's app picker, select `/Applications/Keypress.app` (or your custom install location). macOS may require quitting and reopening the app after permission changes. Keep the app in the same location; moving or rebuilding an ad-hoc-signed app can require granting permissions again.
 
@@ -87,7 +89,7 @@ The app samples target geometry on a background queue every 150 ms while running
 
 The panel shows **Average pointing difficulty**, with **Lower = easier targets**, and **measured clicks / all clicks**. Hover over the information icon for the technical unit (bits) and example scores. Missing measurements never enter the mean as zero. Results are an approximate pointing-difficulty comparison, not a calibrated movement-time prediction, ISO throughput, or medical strain score. Compare coverage as well as averages across activities; there is no combined weighted “strain” score.
 
-Only aggregate counts, recent per-second counts for APM, and difficulty totals are retained for the session. A current pointer origin and short-lived target geometry are held in memory for measurement. The code does not read key identities, typed text, Accessibility labels, or control values; it stores no individual event history and makes no network requests.
+Only aggregate counts, recent per-second counts for APM, the bounded APM chart readings, and difficulty totals are retained in memory for the session. A current pointer origin and short-lived target geometry are held in memory for measurement. The code does not read key identities, typed text, Accessibility labels, or control values; it stores no individual event history and makes no network requests.
 
 References: [MacKenzie on Fitts's law](https://www.yorku.ca/mack/hci1992.html), [two-dimensional targets](https://www.yorku.ca/mack/CHI92.html), [Apple event monitoring](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/MonitoringEvents/MonitoringEvents.html), [Apple trackpad events](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/EventOverview/HandlingTouchEvents/HandlingTouchEvents.html).
 
@@ -102,7 +104,7 @@ The Swift wrapper uses the selected toolchain and locates the Swift Testing macr
 
 The original app icon is drawn with AppKit vector shapes in `scripts/generate-icon.swift`. Run `make icon` to regenerate the PNG preview and the complete macOS `.icns` asset. Builds use the checked-in icon, so no image-generation service or extra tool is required.
 
-The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gesture sequences, pause/resume, rolling APM boundaries and inactivity, Fitts geometry and missing-target handling. Real cross-app input requires the permissions above and a manual check:
+The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gesture sequences, pause/resume, rolling APM boundaries and inactivity, chart history retention and separate runs, Fitts geometry and missing-target handling. Real cross-app input requires the permissions above and a manual check:
 
 1. Start, switch to another app, type three letters and press ⌘C: expect four keyboard actions (plus any other shortcuts used to switch apps).
 2. Hold a letter: expect one extra action. Click twice: expect two clicks.
@@ -111,5 +113,6 @@ The tests cover shortcut/repeat semantics, trackpad momentum, wheel bursts, gest
 5. Stop: counts and time freeze. Resume retains the totals. Reset returns everything to zero.
 6. Try pinch/swipe/rotation in your apps and check which gestures the OS actually exposes. Treat unavailable gestures as missing coverage.
 7. While counting, confirm accepted actions update the menu's APM. Leave it idle for a minute: recent APM should drop to zero. Stop freezes the panel's recent APM; Resume starts a fresh recent window while retaining session totals.
+8. Right-click while counting to view the chart. Confirm it follows recent APM, including the decay to zero while idle. Stop freezes it; Resume preserves the earlier readings and starts a separate line with no paused time on the horizontal axis. Reset clears the chart. On a smaller display, scroll the panel to reach all controls.
 
 The app is ad-hoc signed for local use, not notarized for distribution.

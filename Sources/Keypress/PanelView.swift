@@ -5,6 +5,15 @@ struct PanelView: View {
     let toggle: () -> Void
 
     var body: some View {
+        ViewThatFits(in: .vertical) {
+            content
+            ScrollView { content }
+        }
+        .frame(width: 350)
+        .frame(maxHeight: max(300, (NSScreen.main?.visibleFrame.height ?? 800) - 80))
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Label("Keypress", systemImage: "hand.tap")
@@ -30,6 +39,8 @@ struct PanelView: View {
                 Button { model.copySummary() } label: { Image(systemName: "doc.on.doc") }
                     .help("Copy aggregate results")
             }
+            Divider()
+            APMChartView(history: model.apmHistory, elapsed: model.elapsed)
             Divider()
             VStack(spacing: 8) {
                 row(model.running ? "APM · last minute" : "APM · at stop", "\(model.recentAPM)")
@@ -93,7 +104,6 @@ struct PanelView: View {
             }
         }
         .padding(18)
-        .frame(width: 350)
     }
 
     private func row(_ title: String, _ value: String) -> some View {

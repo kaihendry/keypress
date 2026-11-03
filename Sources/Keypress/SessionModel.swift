@@ -8,6 +8,7 @@ final class SessionModel: ObservableObject {
     @Published private(set) var running = false
     @Published private(set) var elapsed = 0.0
     @Published private(set) var recentAPM = 0
+    @Published private(set) var apmHistory = ActionRateHistory()
     @Published private(set) var accessibilityAllowed = AXIsProcessTrusted()
     @Published private(set) var inputAllowed = CGPreflightListenEventAccess()
     @Published private(set) var notice: String?
@@ -80,6 +81,7 @@ final class SessionModel: ObservableObject {
     func toggle() { running ? pause() : resume() }
 
     func resume() {
+        guard !running else { return }
         refreshPermissions()
         guard ready else { notice = "Enable both permissions below, then start."; return }
         guard !IsSecureEventInputEnabled() else {
@@ -95,7 +97,10 @@ final class SessionModel: ObservableObject {
         counts.breakSequences()
         actionRate = ActionRate()
         recentAPM = 0
-        stopwatch.start(at: now)
+        let time = now
+        stopwatch.start(at: time)
+        elapsed = stopwatch.elapsed(at: time)
+        apmHistory.startSegment(at: elapsed)
         running = true
         notice = nil
         onChange?()
@@ -103,7 +108,7 @@ final class SessionModel: ObservableObject {
 
     func pause() {
         let time = now
-        if running { recentAPM = actionRate.perMinute(at: time) }
+        if running { updateRate(at: time) }
         stopwatch.stop(at: time)
         elapsed = stopwatch.elapsed(at: time)
         running = false
@@ -118,6 +123,7 @@ final class SessionModel: ObservableObject {
         counts = ActionCounter()
         actionRate = ActionRate()
         recentAPM = 0
+        apmHistory = ActionRateHistory()
         elapsed = 0
         notice = nil
         onChange?()
@@ -139,8 +145,7 @@ final class SessionModel: ObservableObject {
             notice = "Paused for secure keyboard input. Resume after leaving the password field."
             return
         }
-        elapsed = stopwatch.elapsed(at: time)
-        recentAPM = actionRate.perMinute(at: time)
+        updateRate(at: time)
         if let point = CGEvent(source: nil)?.location, excludePoint?(point) != true {
             probe.refresh(at: point, time: time)
         }
@@ -200,8 +205,14 @@ final class SessionModel: ObservableObject {
     private func recordActions(_ actions: Int, at time: Double) {
         guard actions > 0 else { return }
         actionRate.record(actions: actions, at: time)
-        recentAPM = actionRate.perMinute(at: time)
+        updateRate(at: time)
         onChange?()
+    }
+
+    private func updateRate(at time: Double) {
+        elapsed = stopwatch.elapsed(at: time)
+        recentAPM = actionRate.perMinute(at: time)
+        apmHistory.record(apm: recentAPM, elapsed: elapsed)
     }
 
     func copySummary() {
